@@ -1,0 +1,67 @@
+package test.Rally;
+
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.rallydev.rest.RallyRestApi;
+import com.rallydev.rest.request.QueryRequest;
+import com.rallydev.rest.response.QueryResponse;
+import com.rallydev.rest.util.Fetch;
+import com.rallydev.rest.util.QueryFilter;
+
+import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+
+public class GetDefectsWithoutTC {
+
+    public static void main(String[] args) throws URISyntaxException, IOException {
+
+        //Create and configure a new instance of RallyRestApi
+        RallyRestApi restApi = new RallyRestApi(new URI("<<RALLY_URL>>"), "<<GIVE_API_KEY>>");
+        restApi.setApplicationName("Example");
+
+        try {
+
+            System.out.println("Querying for 50 defects raised without testcase for a specific project & iteration...");
+
+            QueryRequest defects = new QueryRequest("defect");
+
+            defects.setFetch(new Fetch("FormattedID", "Name", "State", "Priority"));
+          //  defects.setQueryFilter(new QueryFilter("State", "<", "Fixed"));
+            defects.setQueryFilter(new QueryFilter("Iteration.Name", "=", "Feb 2020 Interation"));
+            defects.setQueryFilter(new QueryFilter("Testcase", "=", "Null"));
+            defects.setQueryFilter(new QueryFilter("Project.name", "=", "Test One"));
+
+            defects.setOrder("Priority ASC,FormattedID ASC");
+
+            //Return up to 5, 1 per page
+            defects.setPageSize(1);
+            defects.setLimit(50);
+           // defects.setProject("Test One");
+
+            QueryResponse queryResponse = restApi.query(defects);
+            if (queryResponse.wasSuccessful()) {
+                
+            	System.out.println("Total Defects without TCs :" + String.format("\nTotal results: %d", queryResponse.getTotalResultCount()));
+                
+                for (JsonElement result : queryResponse.getResults()) {
+                    JsonObject defect = result.getAsJsonObject();
+                    System.out.println(String.format("\t%s - %s: Priority=%s, State=%s",
+                            defect.get("FormattedID").getAsString(),
+                            defect.get("Name").getAsString(),
+                            defect.get("Priority").getAsString(),
+                            defect.get("State").getAsString()));
+                }
+            } else {
+                System.err.println("The following errors occurred: ");
+                for (String err : queryResponse.getErrors()) {
+                    System.err.println("\t" + err);
+                }
+            }
+
+        } finally {
+            //Release resources
+            restApi.close();
+        }
+    }
+}
